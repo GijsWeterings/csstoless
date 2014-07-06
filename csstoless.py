@@ -3,13 +3,37 @@ import shutil
 from shutil import move
 import os
 import sys
+import re
 
+colorvariables = {}
 #Restarts the script in case of a fail
 def restart():
     python = sys.executable
     os.execl(python,python, * sys.argv)
 
+def checkColor(line):
+    variablerule = ""
+    #textcolor = "/[^\-]color/i"
+    #bgcolor = "/background-color/i"
+    #border = "/border/i"
+
+    m = re.search(r"#[0-9abcdefABCDEF]{6}", line)
+
+    lessrule = line
+
+    if m is not None:
+        variable = m.group(0).upper()
+
+        if variable not in colorvariables:
+            colorvariables[variable] = "@color" + str(len(colorvariables))
+            variablerule = colorvariables[variable] + ": " + variable + ";\n"
+
+        lessrule = lessrule.replace(variable,colorvariables[variable])
+    return (variablerule, lessrule)
+
 def replace(file_path, pattern, subst):
+    colorvariables.clear()
+
     #Creates temporary files to work in
     fh, less_file_path = mkstemp()
     fh2, variables_file_path = mkstemp()
@@ -22,8 +46,9 @@ def replace(file_path, pattern, subst):
     css_file = open(file_path, 'rb')
 
     for line in css_file:
-        variables_file.write("variabele ")
-        less_file.write(line)#.replace(pattern,subst))
+        variable, lessrule = checkColor(line)
+        variables_file.write(variable)
+        less_file.write(lessrule)#.replace(pattern,subst))
     
     #We're done writing to these files, to concatinate them we need to reopen them in a different mode
     less_file.close()
